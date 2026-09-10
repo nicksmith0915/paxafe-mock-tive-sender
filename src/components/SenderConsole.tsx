@@ -14,6 +14,17 @@ import type { LocationMethod, ShipmentProfile } from '@/lib/generator';
 
 const STORAGE_KEY = 'px-mock-sender-config';
 
+/**
+ * Endpoint the console starts on. It points at the deployed Integration API so
+ * the hosted sender works on first load -- a reviewer opening it should not be
+ * met with a localhost URL that cannot possibly respond. Override with
+ * NEXT_PUBLIC_DEFAULT_TARGET_URL when running against a local API, or just edit
+ * the field, which is what it is there for.
+ */
+const DEFAULT_TARGET_URL =
+  process.env.NEXT_PUBLIC_DEFAULT_TARGET_URL ??
+  'https://paxafe-integration-api-five.vercel.app/api/webhook/tive';
+
 interface StoredConfig {
   targetUrl: string;
   apiKey: string;
@@ -30,7 +41,7 @@ type Mode = 'fixtures' | 'simulate';
 
 function loadConfig(): StoredConfig {
   const fallback: StoredConfig = {
-    targetUrl: 'http://localhost:3000/api/webhook/tive',
+    targetUrl: DEFAULT_TARGET_URL,
     apiKey: '',
   };
   try {

@@ -5,6 +5,12 @@ Generates Tive telemetry payloads and posts them to the
 
 Built for the Senior Integration Engineer take-home.
 
+**Live:** https://paxafe-mock-tive-sender-lilac.vercel.app
+
+It opens already pointed at the deployed Integration API. Paste the test key from
+the submission email, pick a scenario, and send. Both the endpoint and the key are
+editable and remembered in `localStorage`.
+
 ---
 
 ## Quick start
