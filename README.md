@@ -1,7 +1,7 @@
 # Mock Tive Sender
 
 Generates Tive telemetry payloads and posts them to the
-[PAXAFE Integration API](../integration-api), then shows exactly what came back.
+[PAXAFE Integration API](https://github.com/nicksmith0915/paxafe-integration-api), then shows exactly what came back.
 
 Built for the Senior Integration Engineer take-home.
 
