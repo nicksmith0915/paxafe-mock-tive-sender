@@ -90,6 +90,22 @@ The relay adds nothing but the API key — what the receiver gets is exactly wha
 the UI shows. If the relay reshaped payloads, the results would not be evidence
 about the receiver.
 
+### The relay sends to the Integration API and nowhere else
+
+A server-side endpoint that fetches whatever URL a visitor types is an open
+proxy: anyone could use the deployment to POST arbitrary JSON to any host on the
+internet. The first deployment was exactly that, confirmed by relaying a request
+to example.com. So the relay checks every target before a request leaves:
+
+- the host must be on the allowlist — by default only the deployed Integration
+  API, plus loopback outside production so a local sender can drive a local API;
+- plain HTTP is refused except on loopback, as it would expose the API key;
+- URLs with embedded credentials are refused;
+- redirects are not followed, since an allowed host redirecting elsewhere would
+  otherwise carry the payload and key past the allowlist.
+
+A refused target gets a `403` naming the allowed hosts, shown in the console.
+
 ### The generator is pure and seeded
 
 `src/lib/generator.ts` has no I/O and takes a seed, so the same seed produces the
@@ -136,8 +152,19 @@ spacing, coordinate ranges and per-profile behaviour.
 
 ## Deployment
 
-Vercel. No environment variables are required: the endpoint and API key are
-entered in the UI, so one deployment can target any Integration API instance.
+Vercel, pinned to `pdx1` in `vercel.json` — the region the Integration API and
+its database run in. No environment variables are required; two are optional:
 
-That is a deliberate trade-off for a test tool. A production sender would hold
-its credential server-side rather than accepting it from the browser.
+| Variable | Purpose |
+|---|---|
+| `ALLOWED_TARGET_HOSTS` | Comma-separated hosts the relay may send to. Replaces the default (the deployed Integration API). |
+| `NEXT_PUBLIC_DEFAULT_TARGET_URL` | The endpoint the console opens on, e.g. a local API during development. |
+
+The API key is entered in the UI and kept in the browser's `localStorage`. That is
+a deliberate trade-off for a test tool that a reviewer uses with a test key; a
+production sender would hold its credential server-side.
+
+CI runs typecheck, lint, tests and a production build on every push, and
+Dependabot proposes grouped monthly updates. Responses carry baseline security
+headers: the page cannot be framed, so it cannot be clickjacked into sending with
+a stored key.
