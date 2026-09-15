@@ -18,6 +18,8 @@
 
 import { z } from 'zod';
 
+import { allowedTargetHosts, checkTarget } from '@/lib/target';
+
 /** Bounded so a mistyped burst cannot turn this into a load generator. */
 const MAX_PAYLOADS_PER_REQUEST = 50;
 const PER_REQUEST_TIMEOUT_MS = 15_000;
@@ -25,7 +27,8 @@ const PER_REQUEST_TIMEOUT_MS = 15_000;
 export const maxDuration = 60;
 
 const SendRequestSchema = z.object({
-  targetUrl: z.string().url('Target URL must be a valid absolute URL.'),
+  // Shape only; which URLs are acceptable is decided by checkTarget below.
+  targetUrl: z.string().min(1, 'A target URL is required.'),
   apiKey: z.string().min(1, 'An API key is required.'),
   payloads: z
     .array(z.record(z.string(), z.unknown()))
@@ -68,6 +71,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { targetUrl, apiKey, payloads, delayMs } = parsed.data;
+
+  // Before any request leaves: the relay sends only to the Integration API.
+  const target = checkTarget(targetUrl, allowedTargetHosts());
+  if (!target.ok) {
+    return Response.json({ error: target.reason }, { status: target.status });
+  }
   const results: SendResult[] = [];
 
   // Sequential rather than parallel: the point is to imitate a device
@@ -105,7 +114,22 @@ async function sendOne(
       body: JSON.stringify(payload),
       signal: controller.signal,
       cache: 'no-store',
+      // Following a redirect would send the payload -- and the API key -- to
+      // whatever host an allowed target points at, bypassing the allowlist.
+      redirect: 'manual',
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      return {
+        index,
+        ok: false,
+        status: response.status,
+        durationMs: Date.now() - startedAt,
+        requestId: response.headers.get('x-request-id'),
+        body: null,
+        error: `Target redirected to ${response.headers.get('location') ?? 'another location'}; the relay does not follow redirects.`,
+      };
+    }
 
     // The receiver answers with JSON for success and problem+json for errors,
     // but a misconfigured URL could return anything -- so fall back to text.
